@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+
+<head>
+    <meta charset="utf-8">
+</head>
+
+<body style="height: 100%; margin: 0">
+    <div id="container" style="height: 100%"></div>
+    <div id="bmap"></div>
+    <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/echarts-all-3.js"></script>
+    <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/extension/dataTool.min.js"></script>
+    <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/map/js/china.js"></script>
+    <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/map/js/world.js"></script>
+    <script type="text/javascript" src="http://api.map.baidu.com/api?v=2.0&ak=ZUONbpqGBsYGXNIYHicvbAbM"></script>
+    <script type="text/javascript" src="http://echarts.baidu.com/gallery/vendors/echarts/extension/bmap.min.js"></script>
+    <script type="text/javascript">
+    var dom = document.getElementById("container");
+    var myChart = echarts.init(dom);
+
+    var app = {};
+    option = null;
+    var data = [{
+        name: '上海',
+        value: 450
+    }, {
+        name: '武汉',
+        value: 200
+    }, {
+        name: '北京',
+        value: 480
+    }, {
+        name: '重庆',
+        value: 175
+    }, {
+        name: '山东',
+        value: 400
+    }];
+    var geoCoordMap = {
+        '上海': [121.48, 31.22],
+        '武汉': [114.31, 30.52],
+        '北京': [116.425627, 39.911013],
+        '重庆': [106.547391, 29.569992],
+        '山东': [117.123606, 36.685528]
+    };
+
+
+    var cityarr = ['上海', '武汉', '北京', '重庆', '济南', '青岛', '烟台', '潍坊']
+
+    var convertData = function(data) {
+        var res = [];
+        for (var i = 0; i < data.length; i++) {
+            var geoCoord = geoCoordMap[data[i].name];
+            if (geoCoord) {
+                res.push({
+                    name: data[i].name,
+                    value: geoCoord.concat(data[i].value)
+                });
+            }
+        }
+        // console.log(res)
+        return res;
+    };
+
+    var yizhanDate = {};
+    //bmap
+    function bmapsearch(city) {
+        let str = city + '菜鸟驿站';
+        var map = new BMap.Map("bmap");
+        map.centerAndZoom(new BMap.Point(116.404, 39.915), 11);
+        var options = {
+            onSearchComplete: function(results) {
+                if (local.getStatus() == BMAP_STATUS_SUCCESS) {
+                    // 判断状态是否正确      
+                    var s = [];
+                    for (var i = 0; i < results.getCurrentNumPois(); i++) {
+                        // console.log("res", results.getPoi(i))
+                        let poi = {};
+                        poi = {
+                            city: results.getPoi(i).city,
+                            address: results.getPoi(i).address,
+                            point: results.getPoi(i).point,
+                            province: results.getPoi(i).province,
+                            phoneNumber: results.getPoi(i).phoneNumber
+                        }
+                        s.push(poi);
+                    }
+                    // document.getElementById("log").innerHTML = s.join("<br>");
+                    console.log("s", s)
+                    yizhanDate[city] = s;
+
+                    return s;
+                }
+            }
+        };
+        var local = new BMap.LocalSearch(map, options);
+        local.search(str);
+    }
+
+    //object to array
+    function objecttoarray(obj) {
+        let item = [];
+        for (let key in obj) {
+            if (isNaN(obj[key]) !== true) {
+                item.push(obj[key])
+            }
+        }
+        return item;
+    }
+
+    function search(cityarr) {
+        for (let j = 0, len = cityarr.length; j < len; j++) {
+            let city = cityarr[j];
+            let str = city + '菜鸟驿站';
+            let options = {
+                onSearchComplete: function(results) {
+                    if (local.getStatus() == BMAP_STATUS_SUCCESS) {
+                        // 判断状态是否正确      
+                        var s = [];
+                        // console.log("res", results.getPoi(200))
+                        // console.log("res", results.getNumPois())
+                        for (var i = 0; i < results.getCurrentNumPois(); i++) {
+                            let poi = {};
+                            poi = {
+                                city: results.getPoi(i).city,
+                                address: results.getPoi(i).address,
+                                point: objecttoarray(results.getPoi(i).point),
+                                province: results.getPoi(i).province,
+                                phoneNumber: results.getPoi(i).phoneNumber
+                            }
+                            s.push(poi);
+                        }
+                        // document.getElementById("log").innerHTML = s.join("<br>");
+                        // console.log("s", s)
+                        yizhanDate[city] = s;
+
+                        for (let i = 0, len = s.length; i < len; i++) {
+                            let item = s[i];
+                            // console.log("item", item)
+                            let data_item = {
+                                name: item.address,
+                                value: 200
+                            }
+
+                            geoCoordMap[item.address] = item.point;
+                            data.push(data_item)
+                        }
+
+                    }
+                }
+            };
+
+            let map = new BMap.Map("bmap");
+
+            let local = new BMap.LocalSearch(map, options);
+            local.search(str);
+        }
+    }
+
+    search(cityarr);
+
+    setTimeout(function() {
+        console.log("data", data);
+        console.log("data", data.length);
+        console.log("geoCoordMap", geoCoordMap);
+        option = {
+            title: {
+                text: '圈滴站点数据图',
+                subtext: 'data from quandi',
+                sublink: 'http://www.quandi.com',
+                left: 'center'
+            },
+            tooltip: {
+                trigger: 'item'
+            },
+            bmap: {
+                center: [104.114129, 37.550339],
+                zoom: 4,
+                roam: true,
+                mapStyle: {
+                    styleJson: [{
+                        'featureType': 'water',
+                        'elementType': 'all',
+                        'stylers': {
+                            'color': '#d1d1d1'
+                        }
+                    }, {
+                        'featureType': 'land',
+                        'elementType': 'all',
+                        'stylers': {
+                            'color': '#f3f3f3'
+                        }
+                    }, {
+                        'featureType': 'railway',
+                        'elementType': 'all',
+                        'stylers': {
+                            'visibility': 'off'
+                        }
+                    }, {
+                        'featureType': 'highway',
+                        'elementType': 'all',
+                        'stylers': {
+                            'color': '#fdfdfd'
+                        }
+                    }, {
+                        'featureType': 'highway',
+                        'elementType': 'labels',
+                        'stylers': {
+                            'visibility': 'off'
+                        }
+                    }, {
+                        'featureType': 'arterial',
+                        'elementType': 'geometry',
+                        'stylers': {
+                            'color': '#fefefe'
+                        }
+                    }, {
+                        'featureType': 'arterial',
+                        'elementType': 'geometry.fill',
+                        'stylers': {
+                            'color': '#fefefe'
+                        }
+                    }, {
+                        'featureType': 'poi',
+                        'elementType': 'all',
+                        'stylers': {
+                            'visibility': 'off'
+                        }
+                    }, {
+                        'featureType': 'green',
+                        'elementType': 'all',
+                        'stylers': {
+                            'visibility': 'off'
+                        }
+                    }, {
+                        'featureType': 'subway',
+                        'elementType': 'all',
+                        'stylers': {
+                            'visibility': 'off'
+                        }
+                    }, {
+                        'featureType': 'manmade',
+                        'elementType': 'all',
+                        'stylers': {
+                            'color': '#d1d1d1'
+                        }
+                    }, {
+                        'featureType': 'local',
+                        'elementType': 'all',
+                        'stylers': {
+                            'color': '#d1d1d1'
+                        }
+                    }, {
+                        'featureType': 'arterial',
+                        'elementType': 'labels',
+                        'stylers': {
+                            'visibility': 'off'
+                        }
+                    }, {
+                        'featureType': 'boundary',
+                        'elementType': 'all',
+                        'stylers': {
+                            'color': '#fefefe'
+                        }
+                    }, {
+                        'featureType': 'building',
+                        'elementType': 'all',
+                        'stylers': {
+                            'color': '#d1d1d1'
+                        }
+                    }, {
+                        'featureType': 'label',
+                        'elementType': 'labels.text.fill',
+                        'stylers': {
+                            'color': '#999999'
+                        }
+                    }]
+                }
+            },
+            series: [{
+                name: '站点',
+                type: 'scatter',
+                coordinateSystem: 'bmap',
+                data: convertData(data),
+                symbolSize: function(val) {
+                    return val[2] / 10;
+                },
+                label: {
+                    normal: {
+                        formatter: '{b}',
+                        position: 'right',
+                        show: false
+                    },
+                    emphasis: {
+                        show: true
+                    }
+                },
+                itemStyle: {
+                    normal: {
+                        color: '#EE0E0E'
+                    }
+                }
+            }, {
+                name: 'Top 3',
+                type: 'effectScatter',
+                coordinateSystem: 'bmap',
+                data: convertData(data.sort(function(a, b) {
+                    return b.value - a.value;
+                }).slice(0, 3)),
+                symbolSize: function(val) {
+                    return val[2] / 20;
+                },
+                showEffectOn: 'render',
+                rippleEffect: {
+                    brushType: 'stroke'
+                },
+                hoverAnimation: true,
+                label: {
+                    normal: {
+                        formatter: '{b}',
+                        position: 'right',
+                        show: true
+                    }
+                },
+                itemStyle: {
+                    normal: {
+                        color: '#9B0606',
+                        shadowBlur: 10,
+                        shadowColor: '#333'
+                    }
+                },
+                zlevel: 1
+            }]
+        };
+        if (option && typeof option === "object") {
+            myChart.setOption(option, true);
+        }
+
+    }, 5000)
+    </script>
+</body>
+
+</html>
